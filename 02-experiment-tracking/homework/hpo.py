@@ -31,14 +31,14 @@ def load_pickle(filename: str):
 def run_optimization(data_path: str, num_trials: int):
 
     X_train, y_train = load_pickle(os.path.join(data_path, "train.pkl"))
+    
+    # Slice to a lightweight subset to prevent Codespace out-of-memory crashes
+    X_train, y_train = X_train[:10000], y_train[:10000]
+
     X_val, y_val = load_pickle(os.path.join(data_path, "val.pkl"))
 
     def objective(params):
-        # --- CHANGES START HERE ---
-        # 1. We wrap each trial inside an MLflow run block
         with mlflow.start_run(nested=True):
-            
-            # 2. Log the hyperparameters that Hyperopt chose for this trial
             mlflow.log_params(params)
             
             rf = RandomForestRegressor(**params)
@@ -46,11 +46,9 @@ def run_optimization(data_path: str, num_trials: int):
             y_pred = rf.predict(X_val)
             rmse = root_mean_squared_error(y_val, y_pred)
             
-            # 3. Log the validation RMSE metric to our MLflow server
             mlflow.log_metric("rmse", rmse)
 
             return {'loss': rmse, 'status': STATUS_OK}
-        # --- CHANGES END HERE ---
 
     search_space = {
         'max_depth': scope.int(hp.quniform('max_depth', 1, 20, 1)),

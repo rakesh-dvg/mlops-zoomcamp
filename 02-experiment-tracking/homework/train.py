@@ -4,7 +4,6 @@ import click
 import mlflow
 
 from sklearn.ensemble import RandomForestRegressor
-# CHANGE HERE: Import root_mean_squared_error instead of mean_squared_error
 from sklearn.metrics import root_mean_squared_error 
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
@@ -21,9 +20,18 @@ def load_pickle(filename: str):
     help="Location where the processed NYC taxi trip data was saved"
 )
 def run_train(data_path: str):
-    mlflow.sklearn.autolog()
+    # Disable heavy dataset profiling and signatures to prevent OOM termination
+    mlflow.sklearn.autolog(
+        log_datasets=False,
+        log_model_signatures=False,
+        log_input_examples=False
+    )
 
     X_train, y_train = load_pickle(os.path.join(data_path, "train.pkl"))
+    
+    # Slice to a lightweight subset to prevent Codespace out-of-memory crashes
+    X_train, y_train = X_train[:10000], y_train[:10000]
+
     X_val, y_val = load_pickle(os.path.join(data_path, "val.pkl"))
 
     with mlflow.start_run():
@@ -31,7 +39,6 @@ def run_train(data_path: str):
         rf.fit(X_train, y_train)
         y_pred = rf.predict(X_val)
 
-        # CHANGE HERE: Use the new function without the squared argument
         rmse = root_mean_squared_error(y_val, y_pred)
         print(f"RMSE: {rmse}")
 
